@@ -1,33 +1,20 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 void main() {
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({Key? key}) : super(key: key);
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Memory Lane',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
@@ -37,21 +24,112 @@ class MyApp extends StatelessWidget {
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key});
+  const MyHomePage({Key? key}) : super(key: key);
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  _MyHomePageState createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  late GoogleMapController mapController;
+  Set<Marker> markers = {};
+  final LatLng _center = const LatLng(37.555133, 126.969311);
+
+  void _onMapCreated(GoogleMapController controller) {
+    mapController = controller;
+  }
+
+  void _onMapTapped(LatLng position) {
+    _showInputDialog(position);
+  }
+
+  Future<void> _showInputDialog(LatLng position) async {
+    String title = '';
+    String snippet = '';
+
+    return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('추억 남기기'),
+          content: Column(
+            children: [
+              _buildTextField('제목', (value) => title = value),
+              _buildTextField('내용', (value) => snippet = value),
+            ],
+          ),
+          actions: [
+            _buildTextButton('취소', () {
+              Navigator.of(context).pop();
+            }),
+            _buildTextButton('등록하기', () {
+              _addMarker(position, title, snippet);
+              Navigator.of(context).pop();
+            }),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildTextField(String labelText, Function(String) onChanged) {
+    return TextField(
+      onChanged: onChanged,
+      decoration: InputDecoration(labelText: labelText),
+    );
+  }
+
+  Widget _buildTextButton(String label, VoidCallback onPressed) {
+    return TextButton(
+      onPressed: onPressed,
+      child: Text(label),
+    );
+  }
+
+  Future getBytesFromAsset(String path, int width) async {
+    ByteData data = await rootBundle.load(path);
+    ui.Codec codec = await ui.instantiateImageCodec(data.buffer.asUint8List(),
+        targetWidth: width);
+    ui.FrameInfo fi = await codec.getNextFrame();
+    return (await fi.image.toByteData(format: ui.ImageByteFormat.png))
+        ?.buffer
+        .asUint8List();
+  }
+
+  void _addMarker(LatLng position, String title, String snippet) async {
+    final Uint8List markerIcon =
+        await getBytesFromAsset('assets/img/marker_icon.png', 100);
+
+    setState(() {
+      markers.add(
+        Marker(
+          markerId: MarkerId(position.toString()),
+          position: position,
+          infoWindow: InfoWindow(
+            title: title,
+            snippet: snippet,
+          ),
+          icon: BitmapDescriptor.fromBytes(markerIcon),
+        ),
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Test Title"),
+        title: const Text('Maps Sample App'),
+        backgroundColor: Colors.green[700],
       ),
-      body: const Center(
-        child: Text("Hello World"),
+      body: GoogleMap(
+        onMapCreated: _onMapCreated,
+        onTap: _onMapTapped,
+        initialCameraPosition: CameraPosition(
+          target: _center,
+          zoom: 11.0,
+        ),
+        markers: markers,
       ),
     );
   }
