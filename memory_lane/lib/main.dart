@@ -34,6 +34,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  Set<Polyline> polylines = {};
   late GoogleMapController mapController;
   Set<Marker> markers = {};
   final LatLng _center = const LatLng(37.555133, 126.969311);
@@ -163,6 +164,17 @@ class _MyHomePageState extends State<MyHomePage> {
           icon: BitmapDescriptor.fromBytes(markerIcon),
         ),
       );
+      if (markers.length > 1) {
+        LatLng previousPosition =
+            markers.elementAt(markers.length - 2).position;
+        polylines.add(Polyline(
+          polylineId:
+              PolylineId(position.toString() + previousPosition.toString()),
+          points: [previousPosition, position],
+          color: Colors.teal,
+          width: 4,
+        ));
+      }
     });
   }
 
@@ -188,6 +200,7 @@ class _MyHomePageState extends State<MyHomePage> {
           zoom: 11.0,
         ),
         markers: markers,
+        polylines: polylines,
       ),
     );
   }
