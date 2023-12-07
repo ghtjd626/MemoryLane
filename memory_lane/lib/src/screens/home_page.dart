@@ -37,18 +37,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _showInputDialog(LatLng position) async {
-    XFile? _image;
-    final ImagePicker picker = ImagePicker();
-
-    Future getImage(ImageSource imageSource) async {
-      final XFile? pickedFile = await picker.pickImage(source: imageSource);
-      if (pickedFile != null) {
-        setState(() {
-          _image = XFile(pickedFile.path);
-        });
-        setState(() {});
-      }
-    }
+    XFile? image;
 
     String title = '';
     String snippet = '';
@@ -58,39 +47,41 @@ class _MyHomePageState extends State<MyHomePage> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('기억 남기기'),
-          content: Column(
-            children: [
-              FutureBuilder<XFile?>(
-                future: _getImage(ImageSource.gallery),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.done &&
-                      snapshot.data != null) {
-                    _image = snapshot.data!;
-                    return ClipRRect(
-                      borderRadius: BorderRadius.circular(12.0),
-                      child: Image.file(File(_image!.path)),
-                    );
-                  } else {
-                    return const Text('Loading image...');
-                  }
-                },
-              ),
-              CustomTextField(
-                labelText: '제목',
-                onChanged: (value) => title = value,
-              ),
-              CustomTextField(
-                labelText: '내용',
-                onChanged: (value) => snippet = value,
-              ),
-            ],
+          content: SingleChildScrollView(
+            child: Column(
+              children: [
+                FutureBuilder<XFile?>(
+                  future: _getImage(ImageSource.gallery),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.done &&
+                        snapshot.data != null) {
+                      image = snapshot.data!;
+                      return ClipRRect(
+                        borderRadius: BorderRadius.circular(12.0),
+                        child: Image.file(File(image!.path)),
+                      );
+                    } else {
+                      return const Text('Loading image...');
+                    }
+                  },
+                ),
+                CustomTextField(
+                  labelText: '제목',
+                  onChanged: (value) => title = value,
+                ),
+                CustomTextField(
+                  labelText: '내용',
+                  onChanged: (value) => snippet = value,
+                ),
+              ],
+            ),
           ),
           actions: [
             _buildTextButton('취소', () {
               Navigator.of(context).pop();
             }),
             _buildTextButton('등록하기', () {
-              _addMarker(position, title, snippet, _image);
+              _addMarker(position, title, snippet, image);
               Navigator.of(context).pop();
             }),
           ],
