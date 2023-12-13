@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
+import 'package:memory_lane/src/api/location_service.dart';
 import 'package:memory_lane/src/utils/image_utils.dart';
 import 'package:memory_lane/src/widgets/custom_text_field.dart';
 import 'dart:ui' as ui;
@@ -17,13 +19,11 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   Set<Polyline> polylines = {};
-  late GoogleMapController mapController;
   Set<Marker> markers = {};
   final LatLng _center = const LatLng(37.555133, 126.969311);
+  final Completer<GoogleMapController> _controller = Completer();
 
-  void _onMapCreated(GoogleMapController controller) {
-    mapController = controller;
-  }
+  bool showSearch = false;
 
   void _onMapTapped(LatLng position) {
     _showInputDialog(position);
@@ -38,6 +38,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _showInputDialog(LatLng position) async {
     XFile? image;
+    bool isLoading = false;
 
     String title = '';
     String snippet = '';
@@ -45,46 +46,71 @@ class _MyHomePageState extends State<MyHomePage> {
     return showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('기억 남기기'),
-          content: SingleChildScrollView(
-            child: Column(
-              children: [
-                FutureBuilder<XFile?>(
-                  future: _getImage(ImageSource.gallery),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.done &&
-                        snapshot.data != null) {
-                      image = snapshot.data!;
-                      return ClipRRect(
-                        borderRadius: BorderRadius.circular(12.0),
-                        child: Image.file(File(image!.path)),
-                      );
-                    } else {
-                      return const Text('Loading image...');
-                    }
-                  },
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('기억 남기기'),
+              content: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    Column(
+                      children: [
+                        Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            IconButton(
+                              icon: const Icon(
+                                Icons.camera_alt,
+                                size: 50,
+                                color: Colors.blue,
+                              ),
+                              onPressed: () async {
+                                setState(() {
+                                  isLoading = true;
+                                });
+
+                                XFile? pickedFile =
+                                    await _getImage(ImageSource.gallery);
+
+                                setState(() {
+                                  isLoading = false;
+                                  image = pickedFile;
+                                });
+                              },
+                            ),
+                            if (isLoading)
+                              const CircularProgressIndicator()
+                            else if (image != null)
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(12.0),
+                                child: Image.file(File(image!.path)),
+                              ),
+                          ],
+                        ),
+                        CustomTextField(
+                          labelText: '제목',
+                          onChanged: (value) => title = value,
+                        ),
+                        CustomTextField(
+                          labelText: '내용',
+                          onChanged: (value) => snippet = value,
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                CustomTextField(
-                  labelText: '제목',
-                  onChanged: (value) => title = value,
-                ),
-                CustomTextField(
-                  labelText: '내용',
-                  onChanged: (value) => snippet = value,
-                ),
+              ),
+              actions: [
+                _buildTextButton('취소', () {
+                  Navigator.of(context).pop();
+                }),
+                _buildTextButton('등록하기', () {
+                  _addMarker(position, title, snippet, image);
+                  Navigator.of(context).pop();
+                }),
               ],
-            ),
-          ),
-          actions: [
-            _buildTextButton('취소', () {
-              Navigator.of(context).pop();
-            }),
-            _buildTextButton('등록하기', () {
-              _addMarker(position, title, snippet, image);
-              Navigator.of(context).pop();
-            }),
-          ],
+            );
+          },
         );
       },
     );
@@ -127,14 +153,14 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       markers.add(
         Marker(
-          markerId: MarkerId(position.toString()),
-          position: position,
-          infoWindow: InfoWindow(
-            title: title,
-            snippet: snippet,
-          ),
-          icon: BitmapDescriptor.fromBytes(markerIcon),
-        ),
+            markerId: MarkerId(position.toString()),
+            position: position,
+            infoWindow: InfoWindow(
+              title: title,
+              snippet: snippet,
+            ),
+            icon: BitmapDescriptor.fromBytes(markerIcon),
+            onTap: () => print(1)),
       );
       if (markers.length > 1) {
         LatLng previousPosition =
@@ -143,36 +169,100 @@ class _MyHomePageState extends State<MyHomePage> {
           polylineId:
               PolylineId(position.toString() + previousPosition.toString()),
           points: [previousPosition, position],
-          color: Colors.teal,
+          color: Colors.blue,
           width: 4,
         ));
       }
     });
   }
 
-  Widget _buildTextField(String labelText, Function(String) onChanged) {
-    return TextField(
-      onChanged: onChanged,
-      decoration: InputDecoration(labelText: labelText),
-    );
-  }
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Memory Lane'),
-        backgroundColor: Colors.blue[700],
-      ),
-      body: GoogleMap(
-        onMapCreated: _onMapCreated,
-        onTap: _onMapTapped,
-        initialCameraPosition: CameraPosition(
-          target: _center,
-          zoom: 11.0,
+        appBar: AppBar(
+          backgroundColor: Colors.blue,
+          foregroundColor: Colors.white,
+          title: const Row(
+            children: [
+              Icon(Icons.not_listed_location_outlined),
+              SizedBox(width: 4),
+              Text(
+                'Memory Lane',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.search),
+              onPressed: () {
+                setState(() {
+                  showSearch = !showSearch;
+                });
+              },
+            ),
+          ],
         ),
-        markers: markers,
-        polylines: polylines,
+        body: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Visibility(
+                    visible: showSearch,
+                    child: TextFormField(
+                      controller: _searchController,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(
+                        hintText: ' Search your Place',
+                      ),
+                      onChanged: (value) {
+                        print(value);
+                      },
+                    ),
+                  ),
+                ),
+                Visibility(
+                  visible: showSearch,
+                  child: IconButton(
+                    onPressed: () async {
+                      var place = await LocationService()
+                          .getPlace(_searchController.text);
+                      _goToPlace(place);
+                    },
+                    icon: const Icon(Icons.search),
+                  ),
+                ),
+              ],
+            ),
+            Expanded(
+              child: GoogleMap(
+                onMapCreated: (GoogleMapController controller) {
+                  _controller.complete(controller);
+                },
+                onTap: _onMapTapped,
+                initialCameraPosition: CameraPosition(
+                  target: _center,
+                  zoom: 11.0,
+                ),
+                markers: markers,
+                polylines: polylines,
+              ),
+            )
+          ],
+        ));
+  }
+
+  Future<void> _goToPlace(Map<String, dynamic> place) async {
+    final double lat = place['geometry']['location']['lat'];
+    final double lng = place['geometry']['location']['lng'];
+
+    final GoogleMapController controller = await _controller.future;
+    controller.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(target: LatLng(lat, lng), zoom: 12),
       ),
     );
   }
