@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
-import 'package:memory_lane/src/api/location_service.dart';
+import 'package:memory_lane/src/api/find_place.dart';
 import 'package:memory_lane/src/utils/image_utils.dart';
 import 'package:memory_lane/src/widgets/custom_text_field.dart';
 import 'dart:ui' as ui;
@@ -20,7 +20,7 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   Set<Polyline> polylines = {};
   Set<Marker> markers = {};
-  final LatLng _center = const LatLng(37.555133, 126.969311);
+  final LatLng _center = const LatLng(37.62947089778691, 127.0815429031069);
   final Completer<GoogleMapController> _controller = Completer();
 
   bool showSearch = false;
@@ -142,11 +142,12 @@ class _MyHomePageState extends State<MyHomePage> {
 
       img.Image? originalImage = img.decodeImage(await imageFile.readAsBytes());
       img.Image resizedImage =
-          img.copyResize(originalImage!, width: 100, height: 100);
+          img.copyResize(originalImage!, width: 130, height: 130);
 
       markerIcon = Uint8List.fromList(img.encodePng(resizedImage));
     } else {
-      markerIcon = await getBytesFromAsset('assets/img/marker_icon.png', 150);
+      markerIcon =
+          await getBytesFromAsset('lib/assets/img/marker_icon.png', 150);
     }
     markerIcon = ImageUtils.makeCircularIcon(markerIcon);
 
@@ -245,7 +246,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 onTap: _onMapTapped,
                 initialCameraPosition: CameraPosition(
                   target: _center,
-                  zoom: 11.0,
+                  zoom: 13.0,
                 ),
                 markers: markers,
                 polylines: polylines,
@@ -262,7 +263,7 @@ class _MyHomePageState extends State<MyHomePage> {
     final GoogleMapController controller = await _controller.future;
     controller.animateCamera(
       CameraUpdate.newCameraPosition(
-        CameraPosition(target: LatLng(lat, lng), zoom: 12),
+        CameraPosition(target: LatLng(lat, lng), zoom: 18),
       ),
     );
   }

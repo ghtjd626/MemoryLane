@@ -5,14 +5,11 @@ class LocationService {
   final String key = 'AIzaSyCne8NhkeffWaLxuydcuIONDrmUOwQpQ8w';
 
   Future<String> getPlaceId(String input) async {
-    print(1);
     late String url =
         'https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=$input&inputtype=textquery&key=$key';
     final response = await http.get(Uri.parse(url));
     final json = convert.jsonDecode(response.body);
     final placeId = json['candidates'][0]['place_id'] as String;
-
-    print(placeId);
 
     return placeId;
   }
