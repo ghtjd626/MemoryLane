@@ -154,14 +154,14 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       markers.add(
         Marker(
-            markerId: MarkerId(position.toString()),
-            position: position,
-            infoWindow: InfoWindow(
-              title: title,
-              snippet: snippet,
-            ),
-            icon: BitmapDescriptor.fromBytes(markerIcon),
-            onTap: () => print(1)),
+          markerId: MarkerId(position.toString()),
+          position: position,
+          infoWindow: InfoWindow(
+            title: title,
+            snippet: snippet,
+          ),
+          icon: BitmapDescriptor.fromBytes(markerIcon),
+        ),
       );
       if (markers.length > 1) {
         LatLng previousPosition =
@@ -219,9 +219,6 @@ class _MyHomePageState extends State<MyHomePage> {
                       decoration: const InputDecoration(
                         hintText: ' Search your Place',
                       ),
-                      onChanged: (value) {
-                        print(value);
-                      },
                     ),
                   ),
                 ),
