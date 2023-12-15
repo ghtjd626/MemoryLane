@@ -137,6 +137,11 @@ class _MyHomePageState extends State<MyHomePage> {
       LatLng position, String title, String snippet, XFile? image) async {
     Uint8List markerIcon;
 
+    if (title.isEmpty && snippet.isEmpty && image == null) {
+      _showErrorMessage("사진이나 필드 내용을 입력해주세요.");
+      return;
+    }
+
     if (image != null) {
       final File imageFile = File(image.path);
 
@@ -175,6 +180,18 @@ class _MyHomePageState extends State<MyHomePage> {
         ));
       }
     });
+  }
+
+  void _showErrorMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: const TextStyle(color: Colors.white),
+        ),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
 
   final TextEditingController _searchController = TextEditingController();
